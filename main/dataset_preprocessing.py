@@ -13,7 +13,7 @@ def load_datasets(
     dropout_dataset_location="../data/Dropout/data.csv",
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     auction_dataset = pd.read_csv(auction_dataset_location)
-    dropout_dataset = pd.read_csv(dropout_dataset_location)
+    dropout_dataset = pd.read_csv(dropout_dataset_location, delimiter=";")
     return (auction_dataset, dropout_dataset)
 
 
@@ -189,10 +189,10 @@ def train_test_split_normalize_features() -> tuple[pd.DataFrame, pd.DataFrame]:
 
     auction_scaler.fit(auction_train_df[auction_discrete])
 
-    auction_train_df[auction_discrete] = scaler.transform(
+    auction_train_df[auction_discrete] = auction_scaler.transform(
         auction_train_df[auction_discrete]
     )
-    auction_test_df[auction_discrete] = scaler.transform(
+    auction_test_df[auction_discrete] = auction_scaler.transform(
         auction_test_df[auction_discrete]
     )
 
@@ -201,10 +201,10 @@ def train_test_split_normalize_features() -> tuple[pd.DataFrame, pd.DataFrame]:
 
     dropout_scaler.fit(dropout_train_df[dropout_discrete])
 
-    dropout_train_df[dropout_discrete] = scaler.transform(
+    dropout_train_df[dropout_discrete] = dropout_scaler.transform(
         dropout_train_df[dropout_discrete]
     )
-    dropout_test_df[dropout_discrete] = scaler.transform(
+    dropout_test_df[dropout_discrete] = dropout_scaler.transform(
         dropout_test_df[dropout_discrete]
     )
 
