@@ -1,5 +1,7 @@
-import mlrose_hiive as mlrose
+# Data Science Libraries
 import numpy as np
+import pandas as pd
+import mlrose_hiive as mlrose
 
 
 def optimization_algorithm_fitness_per_iteration(
@@ -73,8 +75,9 @@ def optimization_algorithm_fitness_per_iteration(
 
 def get_optimization_algorithm_fitness_per_iteration_comparison(
     problem_type: str = "FourPeaks",
-    iterations: int = 50,
-    output_location = "../outputs/optimization_algorithms/",
+    iterations: int = 20,
+    output_location="../outputs/optimization_algorithms/",
+    verbose=True,
 ) -> None:
     assert problem_type in [
         "FourPeaks",
@@ -93,14 +96,20 @@ def get_optimization_algorithm_fitness_per_iteration_comparison(
         _, best_fitness, curve = optimization_algorithm_fitness_per_iteration(
             algorithm, problem_type, iterations
         )
-        fitness_history = curve[:, 0].copy()
+        if verbose == True:
+            print(rf"Finished running algorithm: {algorithm}.")
+
+        fitness_history = curve[:, 0].copy().reshape(-1, 1)
         fitness_per_iteration_list.append(fitness_history)
+
     fitness_per_iteration_np = np.hstack(tuple(fitness_per_iteration_list))
     fitness_per_iteration_df = pd.DataFrame(
         fitness_per_iteration_np, columns=algorithms
     )
 
-    fitness_per_iteration_df.to_csv(fr"{output_location}/all_algorithms_fitness_per_iteration_{problem_type}")
+    fitness_per_iteration_df.to_csv(
+        rf"{output_location}/all_algorithms_fitness_per_iteration_{problem_type}", index=False
+    )
 
 
 if __name__ == "__main__":
