@@ -3,6 +3,10 @@ import numpy as np
 import pandas as pd
 import mlrose_hiive as mlrose
 
+# Plotting
+import seaborn as sns
+import matplotlib.pyplot as plt
+
 
 def optimization_algorithm_fitness_per_iteration(
     algorithm: str = "rhc", problem_type: str = "FourPeaks", iterations: int = 50
@@ -76,8 +80,8 @@ def optimization_algorithm_fitness_per_iteration(
 def get_optimization_algorithm_fitness_per_iteration_comparison(
     problem_type: str = "FourPeaks",
     iterations: int = 20,
-    output_location="../outputs/optimization_algorithms/",
-    verbose=True,
+    output_location: str = "../outputs/optimization_algorithms/",
+    verbose: bool = True,
 ) -> None:
     assert problem_type in [
         "FourPeaks",
@@ -108,13 +112,79 @@ def get_optimization_algorithm_fitness_per_iteration_comparison(
     )
 
     fitness_per_iteration_df.to_csv(
-        rf"{output_location}/all_algorithms_fitness_per_iteration_{problem_type}", index=False
+        rf"{output_location}/all_algorithms_fitness_per_iteration_{problem_type}",
+        index=False,
     )
 
 
-if __name__ == "__main__":
+def get_optimization_algorithm_fitness_per_iteration_graphs(
+    problem_type: str = "FourPeaks",
+    input_location: str = "../outputs/optimization_algorithms/",
+    output_location: str = "../outputs/optimization_algorithms/",
+) -> None:
+    df = pd.read_csv(
+        rf"{input_location}/all_algorithms_fitness_per_iteration_{problem_type}"
+    )
+
+    df["iteration"] = df.index
+
+    df_melted = df.melt(
+        id_vars=["iteration"], var_name="algorithm", value_name="fitness"
+    )
+
+    plt.figure(figsize=(10, 6))
+    sns.lineplot(data=df_melted, x="iteration", y="fitness", hue="algorithm")
+    plt.title(rf"{problem_type}: Performance per Iteration")
+    plt.xlabel("Iteration")
+    plt.ylabel("Fitness")
+    plt.legend(title="Algorithm")
+    plt.grid(True, which="both", ls="--", linewidth=0.5)
+    plt.tight_layout()
+    plt.savefig(
+        rf"{output_location}/all_algorithms_fitness_per_iteration_graph_{problem_type}.png"
+    )
+
+
+def get_all_optimization_algorithm_fitness_per_iteration_graphs() -> None:
     algorithms = ["rhc", "sa", "ga", "mimic"]
     problem_types = ["FourPeaks", "OneMax", "FlipFlop"]
 
     for problem_type in problem_types:
         get_optimization_algorithm_fitness_per_iteration_comparison(problem_type)
+
+    for problem_type in problem_types:
+        get_optimization_algorithm_fitness_per_iteration_graphs(problem_type)
+
+
+def optimization_algorithm_fitness_per_problem_size(
+    algorithm: str = "rhc",
+    problem_type: str = "FourPeaks",
+    iterations: int = 50,
+    problem_size: int = 100,
+) -> tuple[np.ndarray, float, np.ndarray]:
+    assert algorithm in [
+        "rhc",
+        "sa",
+        "ga",
+        "mimic",
+    ], "Algorithm must be in ['rhc', 'sa', 'ga', 'mimic']"
+    assert problem_type in [
+        "FourPeaks",
+        "OneMax",
+        "FlipFlop",
+    ], "Problem type must be in ['FourPeaks', 'OneMax', 'FlipFlop']"
+
+    if problem_type == "FourPeaks":
+        fitness = mlrose.FourPeaks(t_pct=0.1)
+    elif problem_type == "OneMax":
+        fitness = mlrose.OneMax()
+    elif problem_type == "FlipFlop":
+        fitness = mlrose.FlipFlop()
+
+    problem = mlrose.DiscreteOpt(
+        length=problem_size, fitness_fn=fitness, maximize=True, max_val=2
+    )
+
+
+if __name__ == "__main__":
+    get_all_optimization_algorithm_fitness_per_iteration_graphs()
