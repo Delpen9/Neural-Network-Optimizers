@@ -6,6 +6,13 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_auc_score, accuracy_score
+
+# PyTorch Modules
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset, random_split
 
 
 def load_datasets(
@@ -14,6 +21,10 @@ def load_datasets(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     auction_dataset = pd.read_csv(auction_dataset_location)
     dropout_dataset = pd.read_csv(dropout_dataset_location, delimiter=";")
+    dropout_dataset["Target"] = dropout_dataset["Target"].replace(
+        {"Graduate": 0, "Dropout": 1, "Enrolled": 2}
+    )
+
     return (auction_dataset, dropout_dataset)
 
 
@@ -177,11 +188,18 @@ def train_test_split_normalize_features() -> tuple[pd.DataFrame, pd.DataFrame]:
         dropout_discrete,
     ) = cluster_continuous_features()
 
-    auction_train_df, auction_test_df = train_test_split(
+    auction_temp_df, auction_test_df = train_test_split(
         auction_dataset, test_size=0.2, random_state=42
     )
-    dropout_train_df, dropout_test_df = train_test_split(
+    auction_train_df, auction_val_df = train_test_split(
+        auction_temp_df, test_size=0.2, random_state=42
+    )
+
+    dropout_temp_df, dropout_test_df = train_test_split(
         dropout_dataset, test_size=0.2, random_state=42
+    )
+    dropout_train_df, dropout_val_df = train_test_split(
+        dropout_temp_df, test_size=0.2, random_state=42
     )
 
     # Auction dataset normalization
@@ -191,6 +209,9 @@ def train_test_split_normalize_features() -> tuple[pd.DataFrame, pd.DataFrame]:
 
     auction_train_df[auction_discrete] = auction_scaler.transform(
         auction_train_df[auction_discrete]
+    )
+    auction_val_df[auction_discrete] = auction_scaler.transform(
+        auction_val_df[auction_discrete]
     )
     auction_test_df[auction_discrete] = auction_scaler.transform(
         auction_test_df[auction_discrete]
@@ -204,14 +225,19 @@ def train_test_split_normalize_features() -> tuple[pd.DataFrame, pd.DataFrame]:
     dropout_train_df[dropout_discrete] = dropout_scaler.transform(
         dropout_train_df[dropout_discrete]
     )
+    dropout_val_df[dropout_discrete] = dropout_scaler.transform(
+        dropout_val_df[dropout_discrete]
+    )
     dropout_test_df[dropout_discrete] = dropout_scaler.transform(
         dropout_test_df[dropout_discrete]
     )
 
     return (
         auction_train_df,
+        auction_val_df,
         auction_test_df,
         dropout_train_df,
+        dropout_val_df,
         dropout_test_df,
     )
 
@@ -230,34 +256,119 @@ def preprocess_datasets() -> (
 ):
     (
         auction_train_df,
+        auction_val_df,
         auction_test_df,
         dropout_train_df,
+        dropout_val_df,
         dropout_test_df,
     ) = train_test_split_normalize_features()
 
     # Auction dataset
     auction_targets = ["verification.result", "verification.time"]
-    auction_train_X = auction_train_df.drop(auction_targets, axis=1)
-    auction_train_y = auction_train_df[auction_targets]
-    auction_test_X = auction_test_df.drop(auction_targets, axis=1)
-    auction_test_y = auction_test_df[auction_targets]
+
+    auction_train_X = auction_train_df.drop(auction_targets, axis=1).astype(float)
+    auction_train_y = auction_train_df[auction_targets].astype(float)
+
+    auction_val_X = auction_val_df.drop(auction_targets, axis=1).astype(float)
+    auction_val_y = auction_val_df[auction_targets].astype(float)
+
+    auction_test_X = auction_test_df.drop(auction_targets, axis=1).astype(float)
+    auction_test_y = auction_test_df[auction_targets].astype(float)
 
     # Dropout dataset
     dropout_targets = ["Target"]
-    dropout_train_X = dropout_train_df.drop(dropout_targets, axis=1)
-    dropout_train_y = dropout_train_df[dropout_targets]
-    dropout_test_X = dropout_test_df.drop(dropout_targets, axis=1)
-    dropout_test_y = dropout_test_df[dropout_targets]
+    dropout_train_X = dropout_train_df.drop(dropout_targets, axis=1).astype(float)
+    dropout_train_y = dropout_train_df[dropout_targets].astype(float)
+
+    dropout_val_X = dropout_val_df.drop(dropout_targets, axis=1).astype(float)
+    dropout_val_y = dropout_val_df[dropout_targets].astype(float)
+
+    dropout_test_X = dropout_test_df.drop(dropout_targets, axis=1).astype(float)
+    dropout_test_y = dropout_test_df[dropout_targets].astype(float)
 
     return (
         # Auction
         auction_train_X,
         auction_train_y,
+        auction_val_X,
+        auction_val_y,
         auction_test_X,
         auction_test_y,
         # Dropout
         dropout_train_X,
         dropout_train_y,
+        dropout_val_X,
+        dropout_val_y,
         dropout_test_X,
         dropout_test_y,
+    )
+
+
+def convert_pandas_to_dataloader(
+    # Auction
+    auction_train_X: pd.DataFrame,
+    auction_train_y: pd.DataFrame,
+    auction_val_X: pd.DataFrame,
+    auction_val_y: pd.DataFrame,
+    auction_test_X: pd.DataFrame,
+    auction_test_y: pd.DataFrame,
+    # Dropout
+    dropout_train_X: pd.DataFrame,
+    dropout_train_y: pd.DataFrame,
+    dropout_val_X: pd.DataFrame,
+    dropout_val_y: pd.DataFrame,
+    dropout_test_X: pd.DataFrame,
+    dropout_test_y: pd.DataFrame,
+) -> tuple[DataLoader, DataLoader, DataLoader, DataLoader, DataLoader, DataLoader]:
+    # Auction DataLoaders
+    auction_train_dataset = TensorDataset(
+        torch.tensor(auction_train_X.values, dtype=torch.float32),
+        torch.tensor(auction_train_y.values, dtype=torch.float32),
+    )
+
+    auction_val_dataset = TensorDataset(
+        torch.tensor(auction_val_X.values, dtype=torch.float32),
+        torch.tensor(auction_val_y.values, dtype=torch.float32),
+    )
+
+    auction_test_dataset = TensorDataset(
+        torch.tensor(auction_test_X.values, dtype=torch.float32),
+        torch.tensor(auction_test_y.values, dtype=torch.float32),
+    )
+
+    auction_train_loader = DataLoader(
+        auction_train_dataset, batch_size=32, shuffle=True
+    )
+    auction_val_loader = DataLoader(auction_val_dataset, batch_size=32)
+    auction_test_loader = DataLoader(auction_test_dataset, batch_size=32)
+
+    # Dropout DataLoaders
+    dropout_train_dataset = TensorDataset(
+        torch.tensor(dropout_train_X.values, dtype=torch.float32),
+        torch.tensor(dropout_train_y.values, dtype=torch.float32),
+    )
+
+    dropout_val_dataset = TensorDataset(
+        torch.tensor(dropout_val_X.values, dtype=torch.float32),
+        torch.tensor(dropout_val_y.values, dtype=torch.float32),
+    )
+
+    dropout_test_dataset = TensorDataset(
+        torch.tensor(dropout_test_X.values, dtype=torch.float32),
+        torch.tensor(dropout_test_y.values, dtype=torch.float32),
+    )
+
+    dropout_train_loader = DataLoader(
+        dropout_train_dataset, batch_size=32, shuffle=True
+    )
+    dropout_val_loader = DataLoader(dropout_val_dataset, batch_size=32)
+    dropout_test_loader = DataLoader(dropout_test_dataset, batch_size=32)
+
+    return (
+        auction_train_loader,
+        auction_val_loader,
+        auction_test_loader,
+        dropout_train_loader,
+        dropout_val_loader,
+        dropout_test_loader,
     )
