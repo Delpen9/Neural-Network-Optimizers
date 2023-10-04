@@ -230,6 +230,7 @@ def optimization_algorithm_fitness_adjustable_problem_size(
 def optimization_algorithm_fitness_per_problem_size_comparison(
     problem_type: str = "FourPeaks",
     iterations: int = 50,
+    output_location: str = "../outputs/optimization_algorithms/",
 ) -> tuple[np.ndarray, float, np.ndarray]:
     assert problem_type in [
         "FourPeaks",
@@ -240,9 +241,9 @@ def optimization_algorithm_fitness_per_problem_size_comparison(
     algorithms = ["rhc", "sa", "ga", "mimic"]
     problem_sizes = np.arange(10, 110, 10).astype(int)
 
-    fitness_per_problem_size = []
     fitness_per_problem_size_per_algorithm = []
     for algorithm in algorithms:
+        fitness_per_problem_size = []
         for problem_size in problem_sizes:
             best_fitness = optimization_algorithm_fitness_adjustable_problem_size(
                 algorithm,
@@ -262,7 +263,7 @@ def optimization_algorithm_fitness_per_problem_size_comparison(
         fitness_per_problem_size_per_algorithm_np, columns=algorithms
     )
 
-    fitness_per_iteration_df.to_csv(
+    fitness_per_problem_size_per_algorithm_df.to_csv(
         rf"{output_location}/all_algorithms_fitness_per_problem_size_{problem_type}",
         index=False,
     )
@@ -277,16 +278,16 @@ def get_optimization_algorithm_fitness_per_problem_size_graphs(
         rf"{input_location}/all_algorithms_fitness_per_problem_size_{problem_type}"
     )
 
-    df["iteration"] = df.index
+    df["Problem Size"] = df.index * 10
 
     df_melted = df.melt(
-        id_vars=["iteration"], var_name="algorithm", value_name="fitness"
+        id_vars=["Problem Size"], var_name="algorithm", value_name="fitness"
     )
 
     plt.figure(figsize=(10, 6))
-    sns.lineplot(data=df_melted, x="iteration", y="fitness", hue="algorithm")
+    sns.lineplot(data=df_melted, x="Problem Size", y="fitness", hue="algorithm")
     plt.title(rf"{problem_type}: Performance per Problem Size")
-    plt.xlabel("Iteration")
+    plt.xlabel("Problem Size")
     plt.ylabel("Fitness")
     plt.legend(title="Algorithm")
     plt.grid(True, which="both", ls="--", linewidth=0.5)
@@ -299,8 +300,9 @@ def get_optimization_algorithm_fitness_per_problem_size_graphs(
 def get_all_optimization_algorithm_fitness_per_problem_size_graphs() -> None:
     problem_types = ["FourPeaks", "OneMax", "FlipFlop"]
 
-    for problem_type in problem_types:
-        optimization_algorithm_fitness_per_problem_size_comparison(problem_type)
+    iterations = 5
+    # for problem_type in problem_types:
+    #     optimization_algorithm_fitness_per_problem_size_comparison(problem_type, iterations)
 
     for problem_type in problem_types:
         get_optimization_algorithm_fitness_per_problem_size_graphs(problem_type)
