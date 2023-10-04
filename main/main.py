@@ -8,7 +8,8 @@ from dataset_preprocessing import (
 )
 
 from optimization_problems import (
-    optimization_algorithm_performance,
+    get_all_optimization_algorithm_fitness_per_iteration_graphs,
+    get_all_optimization_algorithm_fitness_per_problem_size_graphs,
 )
 
 if __name__ == "__main__":
@@ -28,3 +29,7 @@ if __name__ == "__main__":
         dropout_test_X,
         dropout_test_y,
     ) = preprocess_datasets()
+
+
+    get_all_optimization_algorithm_fitness_per_iteration_graphs()
+    get_all_optimization_algorithm_fitness_per_problem_size_graphs()
