@@ -7,6 +7,9 @@ import mlrose_hiive as mlrose
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+# Python Standard Libraries
+import time
+
 
 def optimization_algorithm_fitness_per_iteration(
     algorithm: str = "rhc", problem_type: str = "FourPeaks", iterations: int = 50
@@ -451,8 +454,12 @@ def get_optimization_algorithm_fitness_per_evaluation_graphs(
     ]
 
     plt.figure(figsize=(10, 6))
-    for algorithm, algorithm_evaluation_count_field in zip(algorithms, algorithm_evaluation_counts):
-        sns.lineplot(data=df, x=algorithm_evaluation_count_field, y=algorithm, label=algorithm)
+    for algorithm, algorithm_evaluation_count_field in zip(
+        algorithms, algorithm_evaluation_counts
+    ):
+        sns.lineplot(
+            data=df, x=algorithm_evaluation_count_field, y=algorithm, label=algorithm
+        )
 
     plt.xscale("log")
 
@@ -470,14 +477,169 @@ def get_optimization_algorithm_fitness_per_evaluation_graphs(
 def get_all_optimization_algorithm_fitness_per_evaluation_graphs() -> None:
     problem_types = ["FourPeaks", "OneMax", "FlipFlop"]
 
-    # for problem_type in problem_types:
-    #     get_optimization_algorithm_fitness_per_evaluation_comparison(problem_type)
+    for problem_type in problem_types:
+        get_optimization_algorithm_fitness_per_evaluation_comparison(problem_type)
 
     for problem_type in problem_types:
         get_optimization_algorithm_fitness_per_evaluation_graphs(problem_type)
 
 
+def optimization_algorithm_fitness_per_wall_clock_time(
+    algorithm: str = "rhc", problem_type: str = "FourPeaks", iterations: int = 50
+) -> tuple[np.ndarray, np.ndarray]:
+    assert algorithm in [
+        "rhc",
+        "sa",
+        "ga",
+        "mimic",
+    ], "Algorithm must be in ['rhc', 'sa', 'ga', 'mimic']"
+    assert problem_type in [
+        "FourPeaks",
+        "OneMax",
+        "FlipFlop",
+    ], "Problem type must be in ['FourPeaks', 'OneMax', 'FlipFlop']"
+
+    max_attempts_to_ensure_iterations = iterations * 10
+
+    if problem_type == "FourPeaks":
+        fitness = mlrose.FourPeaks(t_pct=0.1)
+    elif problem_type == "OneMax":
+        fitness = mlrose.OneMax()
+    elif problem_type == "FlipFlop":
+        fitness = mlrose.FlipFlop()
+
+    problem = mlrose.DiscreteOpt(
+        length=100, fitness_fn=fitness, maximize=True, max_val=2
+    )
+
+    best_fitness_over_time = []
+    wall_clock_times = []
+
+    start_time = time.time()
+    for iter in range(iterations):
+        _, current_best_fitness, _ = mlrose.random_hill_climb(
+            problem,
+            max_attempts=max_attempts_to_ensure_iterations,
+            max_iters=1,
+            restarts=0,
+            init_state=None,
+            curve=True,
+        )
+        best_fitness_over_time.append(current_best_fitness)
+        wall_clock_times.append(time.time() - start_time)
+
+    return np.array(best_fitness_over_time), np.array(wall_clock_times)
+
+
+def get_optimization_algorithm_fitness_per_wall_clock_time_comparison(
+    problem_type: str = "FourPeaks",
+    iterations: int = 50000,
+    output_location: str = "../outputs/optimization_algorithms/",
+    verbose: bool = True,
+) -> None:
+    assert problem_type in [
+        "FourPeaks",
+        "OneMax",
+        "FlipFlop",
+    ], "Problem type must be in ['FourPeaks', 'OneMax', 'FlipFlop']"
+
+    algorithms = [
+        "rhc",
+        "sa",
+        "ga",
+        "mimic",
+    ]
+    algorithm_wall_clock_times = [
+        rf"{algorithm}_wall_clock_time" for algorithm in algorithms
+    ]
+    fitness_per_wall_clock_time_list = []
+    wall_clock_time_per_algorithm = []
+    for algorithm in algorithms:
+        (
+            best_fitness_over_time,
+            wall_clock_times,
+        ) = optimization_algorithm_fitness_per_wall_clock_time(
+            algorithm, problem_type, iterations
+        )
+        if verbose == True:
+            print(rf"Finished running algorithm: {algorithm}.")
+
+        fitness_history = best_fitness_over_time.copy().reshape(-1, 1)
+        wall_clock_times_history = wall_clock_times.copy().reshape(-1, 1)
+
+        fitness_per_wall_clock_time_list.append(fitness_history)
+        wall_clock_time_per_algorithm.append(wall_clock_times_history)
+
+    fitness_per_wall_clock_time_np = np.hstack(tuple(fitness_per_wall_clock_time_list))
+    evaluation_count_per_algorithm_np = np.hstack(tuple(wall_clock_time_per_algorithm))
+    fitness_per_wall_clock_time_per_algorithm_np = np.hstack(
+        (fitness_per_wall_clock_time_np, evaluation_count_per_algorithm_np)
+    )
+    fitness_per_wall_clock_time_per_algorithm_df = pd.DataFrame(
+        fitness_per_wall_clock_time_per_algorithm_np,
+        columns=algorithms + algorithm_wall_clock_times,
+    )
+
+    fitness_per_wall_clock_time_per_algorithm_df.to_csv(
+        rf"{output_location}/all_algorithms_fitness_per_wall_clock_time_{problem_type}",
+        index=False,
+    )
+
+
+def get_optimization_algorithm_fitness_per_wall_clock_time_graphs(
+    problem_type: str = "FourPeaks",
+    input_location: str = "../outputs/optimization_algorithms/",
+    output_location: str = "../outputs/optimization_algorithms/",
+) -> None:
+    df = pd.read_csv(
+        rf"{input_location}/all_algorithms_fitness_per_wall_clock_time_{problem_type}"
+    )
+
+    algorithms = [
+        "rhc",
+        "sa",
+        "ga",
+        "mimic",
+    ]
+    algorithm_evaluation_counts = [
+        rf"{algorithm}_wall_clock_time" for algorithm in algorithms
+    ]
+
+    df[algorithms] = df[algorithms].cummax()
+
+    plt.figure(figsize=(10, 6))
+    for algorithm, algorithm_evaluation_count_field in zip(
+        algorithms, algorithm_evaluation_counts
+    ):
+        sns.lineplot(
+            data=df, x=algorithm_evaluation_count_field, y=algorithm, label=algorithm
+        )
+
+    plt.xscale("log")
+
+    plt.title(rf"{problem_type}: Performance per Wall Clock Time")
+    plt.xlabel("Wall Clock Time")
+    plt.ylabel("Fitness")
+    plt.grid(True, which="both", ls="--", linewidth=0.5)
+    plt.tight_layout()
+    plt.legend()
+    plt.savefig(
+        rf"{output_location}/all_algorithms_fitness_per_wall_clock_time_graph_{problem_type}.png"
+    )
+
+
+def get_all_optimization_algorithm_fitness_per_wall_clock_time_graphs() -> None:
+    problem_types = ["FourPeaks", "OneMax", "FlipFlop"]
+
+    for problem_type in problem_types:
+        get_optimization_algorithm_fitness_per_wall_clock_time_comparison(problem_type)
+
+    for problem_type in problem_types:
+        get_optimization_algorithm_fitness_per_wall_clock_time_graphs(problem_type)
+
+
 if __name__ == "__main__":
     # get_all_optimization_algorithm_fitness_per_iteration_graphs()
     # get_all_optimization_algorithm_fitness_per_problem_size_graphs()
-    get_all_optimization_algorithm_fitness_per_evaluation_graphs()
+    # get_all_optimization_algorithm_fitness_per_evaluation_graphs()
+    get_all_optimization_algorithm_fitness_per_wall_clock_time_graphs()
