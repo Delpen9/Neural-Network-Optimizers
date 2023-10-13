@@ -267,7 +267,7 @@ def optimization_algorithm_fitness_per_problem_size_comparison(
     )
 
     fitness_per_problem_size_per_algorithm_df.to_csv(
-        rf"{output_location}/all_algorithms_fitness_per_problem_size_{problem_type}",
+        rf"{output_location}/all_algorithms_fitness_per_problem_size_{problem_type}_{iterations}_iterations",
         index=False,
     )
 
@@ -276,9 +276,10 @@ def get_optimization_algorithm_fitness_per_problem_size_graphs(
     problem_type: str = "FourPeaks",
     input_location: str = "../outputs/optimization_algorithms/",
     output_location: str = "../outputs/optimization_algorithms/",
+    iterations : int = 50,
 ) -> None:
     df = pd.read_csv(
-        rf"{input_location}/all_algorithms_fitness_per_problem_size_{problem_type}"
+        rf"{input_location}/all_algorithms_fitness_per_problem_size_{problem_type}_{iterations}_iterations"
     )
 
     df["Problem Size"] = df.index * 10
@@ -289,7 +290,7 @@ def get_optimization_algorithm_fitness_per_problem_size_graphs(
 
     plt.figure(figsize=(10, 6))
     sns.lineplot(data=df_melted, x="Problem Size", y="fitness", hue="algorithm")
-    plt.title(rf"{problem_type}: Performance per Problem Size")
+    plt.title(rf"{problem_type}: Performance per Problem Size ({iterations} Iteration)")
     plt.xlabel("Problem Size")
     plt.ylabel("Fitness")
     plt.legend(title="Algorithm")
@@ -300,17 +301,16 @@ def get_optimization_algorithm_fitness_per_problem_size_graphs(
     )
 
 
-def get_all_optimization_algorithm_fitness_per_problem_size_graphs() -> None:
+def get_all_optimization_algorithm_fitness_per_problem_size_graphs(iterations : int = 5) -> None:
     problem_types = ["FourPeaks", "OneMax", "FlipFlop"]
 
-    iterations = 5
-    for problem_type in problem_types:
-        optimization_algorithm_fitness_per_problem_size_comparison(
-            problem_type, iterations
-        )
+    # for problem_type in problem_types:
+    #     optimization_algorithm_fitness_per_problem_size_comparison(
+    #         problem_type, iterations=iterations
+    #     )
 
     for problem_type in problem_types:
-        get_optimization_algorithm_fitness_per_problem_size_graphs(problem_type)
+        get_optimization_algorithm_fitness_per_problem_size_graphs(problem_type, iterations=iterations)
 
 
 def optimization_algorithm_fitness_per_evaluation(
@@ -678,7 +678,7 @@ def get_performance_difference_between_random_hill_climbing_and_simulated_anneal
 
 if __name__ == "__main__":
     # get_all_optimization_algorithm_fitness_per_iteration_graphs()
-    # get_all_optimization_algorithm_fitness_per_problem_size_graphs()
+    get_all_optimization_algorithm_fitness_per_problem_size_graphs(iterations = 5)
     # get_all_optimization_algorithm_fitness_per_evaluation_graphs()
     # get_all_optimization_algorithm_fitness_per_wall_clock_time_graphs()
-    get_performance_difference_between_random_hill_climbing_and_simulated_annealing()
+    # get_performance_difference_between_random_hill_climbing_and_simulated_annealing()
