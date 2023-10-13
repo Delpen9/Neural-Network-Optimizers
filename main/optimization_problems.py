@@ -677,8 +677,8 @@ def get_performance_difference_between_random_hill_climbing_and_simulated_anneal
 
 
 if __name__ == "__main__":
-    # get_all_optimization_algorithm_fitness_per_iteration_graphs()
+    get_all_optimization_algorithm_fitness_per_iteration_graphs()
     get_all_optimization_algorithm_fitness_per_problem_size_graphs(iterations = 5)
-    # get_all_optimization_algorithm_fitness_per_evaluation_graphs()
-    # get_all_optimization_algorithm_fitness_per_wall_clock_time_graphs()
-    # get_performance_difference_between_random_hill_climbing_and_simulated_annealing()
+    get_all_optimization_algorithm_fitness_per_evaluation_graphs()
+    get_all_optimization_algorithm_fitness_per_wall_clock_time_graphs()
+    get_performance_difference_between_random_hill_climbing_and_simulated_annealing()
