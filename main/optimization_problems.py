@@ -536,6 +536,12 @@ def get_optimization_algorithm_fitness_per_wall_clock_time_comparison(
     iterations: int = 500000,
     output_location: str = "../outputs/optimization_algorithms/",
     verbose: bool = True,
+    algorithms: list[str] = [
+        "rhc",
+        "sa",
+        "ga",
+        "mimic",
+    ],
 ) -> None:
     assert problem_type in [
         "FourPeaks",
@@ -543,12 +549,6 @@ def get_optimization_algorithm_fitness_per_wall_clock_time_comparison(
         "FlipFlop",
     ], "Problem type must be in ['FourPeaks', 'OneMax', 'FlipFlop']"
 
-    algorithms = [
-        "rhc",
-        "sa",
-        "ga",
-        "mimic",
-    ]
     algorithm_wall_clock_times = [
         rf"{algorithm}_wall_clock_time" for algorithm in algorithms
     ]
@@ -590,17 +590,18 @@ def get_optimization_algorithm_fitness_per_wall_clock_time_graphs(
     problem_type: str = "FourPeaks",
     input_location: str = "../outputs/optimization_algorithms/",
     output_location: str = "../outputs/optimization_algorithms/",
+    algorithms: list[str] = [
+        "rhc",
+        "sa",
+        "ga",
+        "mimic",
+    ],
+    iterations: int = 500000,
 ) -> None:
     df = pd.read_csv(
         rf"{input_location}/all_algorithms_fitness_per_wall_clock_time_{problem_type}"
     )
 
-    algorithms = [
-        "rhc",
-        "sa",
-        "ga",
-        "mimic",
-    ]
     algorithm_evaluation_counts = [
         rf"{algorithm}_wall_clock_time" for algorithm in algorithms
     ]
@@ -631,15 +632,53 @@ def get_optimization_algorithm_fitness_per_wall_clock_time_graphs(
 def get_all_optimization_algorithm_fitness_per_wall_clock_time_graphs() -> None:
     problem_types = ["FourPeaks", "OneMax", "FlipFlop"]
 
-    for problem_type in problem_types:
-        get_optimization_algorithm_fitness_per_wall_clock_time_comparison(problem_type)
+    algorithms = [
+        "rhc",
+        "sa",
+        "ga",
+        "mimic",
+    ]
 
     for problem_type in problem_types:
-        get_optimization_algorithm_fitness_per_wall_clock_time_graphs(problem_type)
+        get_optimization_algorithm_fitness_per_wall_clock_time_comparison(
+            problem_type, algorithms=algorithms
+        )
+
+    for problem_type in problem_types:
+        get_optimization_algorithm_fitness_per_wall_clock_time_graphs(
+            problem_type, algorithms=algorithms
+        )
+
+
+def get_performance_difference_between_random_hill_climbing_and_simulated_annealing() -> (
+    None
+):
+    problem_types = ["FourPeaks", "OneMax", "FlipFlop"]
+
+    algorithms = [
+        "rhc",
+        "sa",
+    ]
+
+    for problem_type in problem_types:
+        get_optimization_algorithm_fitness_per_wall_clock_time_comparison(
+            problem_type,
+            output_location="../outputs/optimization_algorithms/focused_comparisons/",
+            algorithms=algorithms,
+            iterations = 500000,
+        )
+
+    for problem_type in problem_types:
+        get_optimization_algorithm_fitness_per_wall_clock_time_graphs(
+            problem_type,
+            output_location="../outputs/optimization_algorithms/focused_comparisons/",
+            algorithms=algorithms,
+        )
 
 
 if __name__ == "__main__":
     # get_all_optimization_algorithm_fitness_per_iteration_graphs()
     # get_all_optimization_algorithm_fitness_per_problem_size_graphs()
     # get_all_optimization_algorithm_fitness_per_evaluation_graphs()
-    get_all_optimization_algorithm_fitness_per_wall_clock_time_graphs()
+    # get_all_optimization_algorithm_fitness_per_wall_clock_time_graphs()
+    get_performance_difference_between_random_hill_climbing_and_simulated_annealing()
