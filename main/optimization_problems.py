@@ -533,7 +533,7 @@ def optimization_algorithm_fitness_per_wall_clock_time(
 
 def get_optimization_algorithm_fitness_per_wall_clock_time_comparison(
     problem_type: str = "FourPeaks",
-    iterations: int = 50000,
+    iterations: int = 500000,
     output_location: str = "../outputs/optimization_algorithms/",
     verbose: bool = True,
 ) -> None:
