@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 # Sklearn Libraries
 from sklearn.metrics import log_loss
-from sklearn.preprocessing import LabelBinarizer
+from sklearn.preprocessing import LabelBinarizer, OneHotEncoder
 
 # Python Standard Libraries
 import time
@@ -30,6 +30,7 @@ def train_neural_network(
     algorithm: str = "gradient_descent",
     activation: str = "relu",
     random_state: int = 42,
+    validation_iteration_samples: int = None,
     **kwargs,
 ) -> tuple[list[float], list[float]]:
     assert algorithm in [
@@ -53,7 +54,7 @@ def train_neural_network(
         is_classifier=True,
         learning_rate=learning_rate,
         early_stopping=True,
-        clip_max=5,
+        clip_max=1,
         max_attempts=num_training_iterations,
         random_state=random_state,
         **kwargs,
@@ -62,11 +63,12 @@ def train_neural_network(
     training_losses = []
     validation_losses = []
 
-    validation_iteration_samples = np.arange(
-        np.floor(num_training_iterations // 10),
-        num_training_iterations + np.ceil(num_training_iterations // 10),
-        np.floor(num_training_iterations // 10),
-    ).astype(int)
+    if validation_iteration_samples == None:
+        validation_iteration_samples = np.arange(
+            np.floor(num_training_iterations // 10),
+            num_training_iterations + np.ceil(num_training_iterations // 10),
+            np.floor(num_training_iterations // 10),
+        ).astype(int)
 
     for validation_iteration_sample in validation_iteration_samples:
         model.max_iters = validation_iteration_sample
@@ -91,6 +93,105 @@ def train_neural_network(
     return (training_losses, validation_losses)
 
 
+def get_neural_network_optimization_performance_table(
+    train_X: pd.DataFrame,
+    train_y: pd.DataFrame,
+    val_X: pd.DataFrame,
+    val_y: pd.DataFrame,
+    algorithm: str = "genetic_alg",
+    validation_iteration_samples: list = [500, 2500, 5000, 10000],
+    filename: str = "",
+    output_location: str = "../outputs/neural_network_optimization/",
+) -> None:
+    assert filename != "", "filename parameter must not be empty."
+
+    kwargs = {}
+    if algorithm == "genetic_alg":
+        kwargs = {"pop_size": 10, "mutation_prob": 0.1}
+    elif algorithm == "simulated_annealing":
+        kwargs = {"schedule": mlrose.GeomDecay()}
+    elif algorithm == "random_hill_climb":
+        kwargs = {"restarts": 50}
+
+    (training_losses, validation_losses) = train_neural_network(
+        auction_train_X,
+        auction_train_y,
+        auction_val_X,
+        auction_val_y,
+        learning_rate=1e-3,
+        hidden_nodes=2,
+        num_training_iterations=2500,
+        algorithm=algorithm,
+        activation="relu",
+        random_state=42,
+        validation_iteration_samples=validation_iteration_samples,
+        **kwargs,
+    )
+
+    validation_iteration_samples = np.array([validation_iteration_samples]).T
+    training_losses = np.array([training_losses]).T
+    validation_losses = np.array([validation_losses]).T
+
+    nn_performance_history = pd.DataFrame(
+        np.hstack((validation_iteration_samples, training_losses, validation_losses)),
+        columns=["Iterations", "Training Loss", "Validation Loss"],
+    )
+
+    output_path = rf"{output_location}{filename}"
+    nn_performance_history.to_csv(output_path)
+
+
+def get_all_performance_tables(
+    train_X: pd.DataFrame,
+    train_y: pd.DataFrame,
+    val_X: pd.DataFrame,
+    val_y: pd.DataFrame,
+) -> None:
+    get_neural_network_optimization_performance_table(
+        train_X,
+        train_y,
+        val_X,
+        val_y,
+        algorithm="random_hill_climb",
+        validation_iteration_samples=[100, 200, 500, 1000, 1500],
+        filename="random_hill_climb_performance_per_iteration.csv",
+        output_location="../outputs/neural_network_optimization/",
+    )
+
+    get_neural_network_optimization_performance_table(
+        train_X,
+        train_y,
+        val_X,
+        val_y,
+        algorithm="genetic_alg",
+        validation_iteration_samples=[100, 200, 500, 1000, 1500],
+        filename="genetic_alg_performance_per_iteration.csv",
+        output_location="../outputs/neural_network_optimization/",
+    )
+
+    get_neural_network_optimization_performance_table(
+        train_X,
+        train_y,
+        val_X,
+        val_y,
+        algorithm="simulated_annealing",
+        validation_iteration_samples=[100, 200, 500, 1000, 1500],
+        filename="simulated_annealing_performance_per_iteration.csv",
+        output_location="../outputs/neural_network_optimization/",
+    )
+
+    get_neural_network_optimization_performance_table(
+        train_X,
+        train_y,
+        val_X,
+        val_y,
+        algorithm="gradient_descent",
+        validation_iteration_samples=[100, 200, 500, 1000, 1500],
+        filename="gradient_descent_performance_per_iteration.csv",
+        output_location="../outputs/neural_network_optimization/",
+    )
+
+
 if __name__ == "__main__":
     (
         # Auction
@@ -109,26 +210,12 @@ if __name__ == "__main__":
         dropout_test_y,
     ) = preprocess_datasets()
 
-    algorithm = "genetic_alg"
-    kwargs = {}
-    if algorithm == "genetic_alg":
-        kwargs = {"pop_size": 10, "mutation_prob": 0.1}
-    elif algorithm == "simulated_annealing":
-        kwargs = {"schedule": mlrose.GeomDecay()}
-    elif algorithm == "random_hill_climb":
-        kwargs = {"restarts": 50}
+    auction_train_y = auction_train_y.iloc[:, 0].to_numpy()
+    auction_val_y = auction_val_y.iloc[:, 0].to_numpy()
 
-    
-    (training_losses, validation_losses) = train_neural_network(
-        auction_train_X,
-        auction_train_y.iloc[:, 0],
-        auction_val_X,
-        auction_val_y.iloc[:, 0],
-        learning_rate=1e-1,
-        hidden_nodes=2,
-        num_training_iterations=2500,
-        algorithm=algorithm,
-        activation="relu",
-        random_state=42,
-        **kwargs
+    get_all_performance_tables(
+        auction_train_X.values,
+        auction_train_y,
+        auction_val_X.values,
+        auction_val_y,
     )
