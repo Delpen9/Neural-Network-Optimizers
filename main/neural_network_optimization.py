@@ -198,6 +198,46 @@ def get_neural_network_optimization_performance_table(
     output_path = rf"{output_location}{dataset_type}_{filename}"
     nn_performance_history.to_csv(output_path)
 
+def get_all_performance_graphs(
+    output_location: str = "../outputs/neural_network_optimization/",
+    dataset_type: str = "auction",
+) -> None:
+    algorithms = [
+        "gradient_descent",
+        "simulated_annealing",
+        "random_hill_climb",
+        "genetic_alg"
+    ]
+    neural_network_algorithm_peformance_tables = [
+        fr"{output_location}{dataset_type}_{algorithm}_performance_per_iteration.csv"
+        for algorithm in algorithms
+    ]
+
+    metrics = [
+        ("Training Loss", "Validation Loss"),
+        ("Training Accuracies", "Validation Accuracies"),
+        ("Training AUCs", "Validation AUCs")
+    ]
+    colors = ['blue', 'green', 'red']
+
+    for performance_table_path, algorithm in zip(neural_network_algorithm_peformance_tables, algorithms):
+        performance_df = pd.read_csv(performance_table_path, index_col=0)
+
+        plt.figure(figsize=(12, 8))
+
+        for (train_metric, val_metric), color in zip(metrics, colors):
+            plt.plot(performance_df['Iterations'], performance_df[train_metric], label=train_metric, color=color)
+            plt.plot(performance_df['Iterations'], performance_df[val_metric], label=val_metric, linestyle='--', color=color)
+
+        plt.xlabel("Iterations")
+        plt.ylabel("Performance Metrics")
+        plt.title(fr"{' '.join(word.capitalize() for word in algorithm.split('_'))}: Performance over Iterations")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+
+        plt.savefig(fr"{output_location}{dataset_type}_{algorithm}_performance_per_iteration_graph.png")
+
 
 def get_all_performance_tables(
     train_X: pd.DataFrame,
@@ -273,21 +313,23 @@ if __name__ == "__main__":
         dropout_test_y,
     ) = preprocess_datasets()
 
-    auction_train_y = auction_train_y.iloc[:, 0].to_numpy()
-    auction_val_y = auction_val_y.iloc[:, 0].to_numpy()
+    # auction_train_y = auction_train_y.iloc[:, 0].to_numpy()
+    # auction_val_y = auction_val_y.iloc[:, 0].to_numpy()
 
-    get_all_performance_tables(
-        auction_train_X.values,
-        auction_train_y,
-        auction_val_X.values,
-        auction_val_y,
-        dataset_type="auction",
-    )
+    # get_all_performance_tables(
+    #     auction_train_X.values,
+    #     auction_train_y,
+    #     auction_val_X.values,
+    #     auction_val_y,
+    #     dataset_type="auction",
+    # )
 
-    get_all_performance_tables(
-        dropout_train_X.values,
-        dropout_train_y,
-        dropout_val_X.values,
-        dropout_val_y,
-        dataset_type="dropout"
-    )
+    # get_all_performance_tables(
+    #     dropout_train_X.values,
+    #     dropout_train_y,
+    #     dropout_val_X.values,
+    #     dropout_val_y,
+    #     dataset_type="dropout"
+    # )
+
+    get_all_performance_graphs(dataset_type = "auction")
