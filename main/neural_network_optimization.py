@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 # Sklearn Libraries
 from sklearn.metrics import log_loss
 from sklearn.preprocessing import LabelBinarizer, OneHotEncoder
+from sklearn.metrics import accuracy_score, roc_auc_score
 
 # Python Standard Libraries
 import time
@@ -61,7 +62,12 @@ def train_neural_network(
     )
 
     training_losses = []
+    training_accuracies = []
+    training_aucs = []
+
     validation_losses = []
+    validation_accuracies = []
+    validation_aucs = []
 
     if validation_iteration_samples == None:
         validation_iteration_samples = np.arange(
@@ -74,23 +80,43 @@ def train_neural_network(
         model.max_iters = validation_iteration_sample
         model.fit(X_train, y_train)
 
-        # Training Loss
-        model.predict(X_train)
+        # Training Metrics
+        y_train_pred = model.predict(X_train)
         y_train_pred_prob = model.predicted_probs
         training_loss = log_loss(y_train, y_train_pred_prob)
-        training_losses.append(training_loss)
+        training_accuracy_score = accuracy_score(y_train, y_train_pred)
+        training_auc_score = roc_auc_score(y_train, y_train_pred_prob)
 
-        # Validation Loss
-        model.predict(X_val)
+        training_losses.append(training_loss)
+        training_accuracies.append(training_accuracy_score)
+        training_aucs.append(training_auc_score)
+
+        # Validation Metrics
+        y_val_pred = model.predict(X_val)
         y_val_pred_prob = model.predicted_probs
         validation_loss = log_loss(y_val, y_val_pred_prob)
+        validation_accuracy_score = accuracy_score(y_val, y_val_pred)
+        validation_auc_score = roc_auc_score(y_val, y_val_pred_prob)
+
         validation_losses.append(validation_loss)
+        validation_accuracies.append(validation_accuracy_score)
+        validation_aucs.append(validation_auc_score)
 
         print(
-            rf"Iteration: {validation_iteration_sample}; Training Loss: {training_loss}; Validation Loss: {validation_loss}"
+            rf'''Iteration: {validation_iteration_sample};
+            Training Loss: {training_loss}; Validation Loss: {validation_loss};
+            Training Accuracy: {training_accuracy_score}; Validation Accuracy: {validation_accuracy_score};
+            Training AUC: {training_auc_score}; Validation AUC: {validation_auc_score}'''
         )
 
-    return (training_losses, validation_losses)
+    return (
+        training_losses,
+        validation_losses,
+        training_accuracies,
+        validation_accuracies,
+        training_aucs,
+        validation_aucs,
+    )
 
 
 def get_neural_network_optimization_performance_table(
@@ -102,6 +128,7 @@ def get_neural_network_optimization_performance_table(
     validation_iteration_samples: list = [500, 2500, 5000, 10000],
     filename: str = "",
     output_location: str = "../outputs/neural_network_optimization/",
+    dataset_type: str = "auction",
 ) -> None:
     assert filename != "", "filename parameter must not be empty."
 
@@ -113,13 +140,20 @@ def get_neural_network_optimization_performance_table(
     elif algorithm == "random_hill_climb":
         kwargs = {"restarts": 50}
 
-    (training_losses, validation_losses) = train_neural_network(
+    (
+        training_losses,
+        validation_losses,
+        training_accuracies,
+        validation_accuracies,
+        training_aucs,
+        validation_aucs,
+    ) = train_neural_network(
         auction_train_X,
         auction_train_y,
         auction_val_X,
         auction_val_y,
         learning_rate=1e-3,
-        hidden_nodes=2,
+        hidden_nodes=100,
         num_training_iterations=2500,
         algorithm=algorithm,
         activation="relu",
@@ -132,12 +166,36 @@ def get_neural_network_optimization_performance_table(
     training_losses = np.array([training_losses]).T
     validation_losses = np.array([validation_losses]).T
 
+    training_accuracies = np.array([training_accuracies]).T
+    validation_accuracies = np.array([validation_accuracies]).T
+
+    training_aucs = np.array([training_aucs]).T
+    validation_aucs = np.array([validation_aucs]).T
+
     nn_performance_history = pd.DataFrame(
-        np.hstack((validation_iteration_samples, training_losses, validation_losses)),
-        columns=["Iterations", "Training Loss", "Validation Loss"],
+        np.hstack(
+            (
+                validation_iteration_samples,
+                training_losses,
+                validation_losses,
+                training_accuracies,
+                validation_accuracies,
+                training_aucs,
+                validation_aucs,
+            )
+        ),
+        columns=[
+            "Iterations",
+            "Training Loss",
+            "Validation Loss",
+            "Training Accuracies",
+            "Validation Accuracies",
+            "Training AUCs",
+            "Validation AUCs",
+        ],
     )
 
-    output_path = rf"{output_location}{filename}"
+    output_path = rf"{output_location}{dataset_type}_{filename}"
     nn_performance_history.to_csv(output_path)
 
 
@@ -146,6 +204,7 @@ def get_all_performance_tables(
     train_y: pd.DataFrame,
     val_X: pd.DataFrame,
     val_y: pd.DataFrame,
+    dataset_type: str = "auction",
 ) -> None:
     get_neural_network_optimization_performance_table(
         train_X,
@@ -156,6 +215,7 @@ def get_all_performance_tables(
         validation_iteration_samples=[100, 200, 500, 1000, 1500],
         filename="random_hill_climb_performance_per_iteration.csv",
         output_location="../outputs/neural_network_optimization/",
+        dataset_type=dataset_type,
     )
 
     get_neural_network_optimization_performance_table(
@@ -167,6 +227,7 @@ def get_all_performance_tables(
         validation_iteration_samples=[100, 200, 500, 1000, 1500],
         filename="genetic_alg_performance_per_iteration.csv",
         output_location="../outputs/neural_network_optimization/",
+        dataset_type=dataset_type,
     )
 
     get_neural_network_optimization_performance_table(
@@ -178,6 +239,7 @@ def get_all_performance_tables(
         validation_iteration_samples=[100, 200, 500, 1000, 1500],
         filename="simulated_annealing_performance_per_iteration.csv",
         output_location="../outputs/neural_network_optimization/",
+        dataset_type=dataset_type,
     )
 
     get_neural_network_optimization_performance_table(
@@ -189,6 +251,7 @@ def get_all_performance_tables(
         validation_iteration_samples=[100, 200, 500, 1000, 1500],
         filename="gradient_descent_performance_per_iteration.csv",
         output_location="../outputs/neural_network_optimization/",
+        dataset_type=dataset_type,
     )
 
 
@@ -218,4 +281,13 @@ if __name__ == "__main__":
         auction_train_y,
         auction_val_X.values,
         auction_val_y,
+        dataset_type="auction",
+    )
+
+    get_all_performance_tables(
+        dropout_train_X.values,
+        dropout_train_y,
+        dropout_val_X.values,
+        dropout_val_y,
+        dataset_type="dropout"
     )
