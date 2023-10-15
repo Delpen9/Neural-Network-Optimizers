@@ -295,6 +295,76 @@ def get_all_performance_tables(
     )
 
 
+def get_specific_performance_graphs(
+    output_location: str = "../outputs/neural_network_optimization/",
+    dataset_type: str = "auction",
+) -> None:
+    algorithms = [
+        "gradient_descent",
+        "genetic_alg"
+    ]
+    neural_network_algorithm_peformance_tables = [
+        fr"{output_location}{dataset_type}_{algorithm}_performance_per_iteration_low_iteration_count.csv"
+        for algorithm in algorithms
+    ]
+
+    metrics = [
+        ("Training Loss", "Validation Loss"),
+        ("Training Accuracies", "Validation Accuracies"),
+        ("Training AUCs", "Validation AUCs")
+    ]
+    colors = ['blue', 'green', 'red']
+
+    for performance_table_path, algorithm in zip(neural_network_algorithm_peformance_tables, algorithms):
+        performance_df = pd.read_csv(performance_table_path, index_col=0)
+
+        plt.figure(figsize=(12, 8))
+
+        for (train_metric, val_metric), color in zip(metrics, colors):
+            plt.plot(performance_df['Iterations'], performance_df[train_metric], label=train_metric, color=color)
+            plt.plot(performance_df['Iterations'], performance_df[val_metric], label=val_metric, linestyle='--', color=color)
+
+        plt.xlabel("Iterations")
+        plt.ylabel("Performance Metrics")
+        plt.title(fr"{' '.join(word.capitalize() for word in algorithm.split('_'))}: Performance over Iterations")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+
+        plt.savefig(fr"{output_location}{dataset_type}_{algorithm}_performance_per_iteration_graph_low_iteration_count.png")
+
+def get_specific_performance_tables(
+    train_X: pd.DataFrame,
+    train_y: pd.DataFrame,
+    val_X: pd.DataFrame,
+    val_y: pd.DataFrame,
+    dataset_type: str = "auction",
+    validation_iteration_samples : list = [20, 40, 60, 80, 100]
+) -> None:
+    get_neural_network_optimization_performance_table(
+        train_X,
+        train_y,
+        val_X,
+        val_y,
+        algorithm="genetic_alg",
+        validation_iteration_samples=validation_iteration_samples,
+        filename="genetic_alg_performance_per_iteration_low_iteration_count.csv",
+        output_location="../outputs/neural_network_optimization/",
+        dataset_type=dataset_type,
+    )
+
+    get_neural_network_optimization_performance_table(
+        train_X,
+        train_y,
+        val_X,
+        val_y,
+        algorithm="gradient_descent",
+        validation_iteration_samples=validation_iteration_samples,
+        filename="gradient_descent_performance_per_iteration_low_iteration_count.csv",
+        output_location="../outputs/neural_network_optimization/",
+        dataset_type=dataset_type,
+    )
+
 if __name__ == "__main__":
     (
         # Auction
@@ -313,8 +383,8 @@ if __name__ == "__main__":
         dropout_test_y,
     ) = preprocess_datasets()
 
-    # auction_train_y = auction_train_y.iloc[:, 0].to_numpy()
-    # auction_val_y = auction_val_y.iloc[:, 0].to_numpy()
+    auction_train_y = auction_train_y.iloc[:, 0].to_numpy()
+    auction_val_y = auction_val_y.iloc[:, 0].to_numpy()
 
     # get_all_performance_tables(
     #     auction_train_X.values,
@@ -324,12 +394,14 @@ if __name__ == "__main__":
     #     dataset_type="auction",
     # )
 
-    # get_all_performance_tables(
-    #     dropout_train_X.values,
-    #     dropout_train_y,
-    #     dropout_val_X.values,
-    #     dropout_val_y,
-    #     dataset_type="dropout"
-    # )
+    # get_all_performance_graphs(dataset_type = "auction")
 
-    get_all_performance_graphs(dataset_type = "auction")
+    get_specific_performance_tables(
+        auction_train_X.values,
+        auction_train_y,
+        auction_val_X.values,
+        auction_val_y,
+        dataset_type="auction",
+    )
+
+    get_specific_performance_graphs(dataset_type = "auction")
