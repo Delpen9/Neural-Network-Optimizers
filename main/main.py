@@ -17,6 +17,9 @@ from optimization_problems import (
 
 from neural_network_optimization import (
     get_all_performance_tables,
+    get_all_performance_graphs,
+    get_specific_performance_tables,
+    get_specific_performance_graphs,
 )
 
 if __name__ == "__main__":
@@ -55,10 +58,14 @@ if __name__ == "__main__":
         dataset_type="auction",
     )
 
-    get_all_performance_tables(
-        dropout_train_X.values,
-        dropout_train_y,
-        dropout_val_X.values,
-        dropout_val_y,
-        dataset_type="dropout"
+    get_all_performance_graphs(dataset_type = "auction")
+
+    get_specific_performance_tables(
+        auction_train_X.values,
+        auction_train_y,
+        auction_val_X.values,
+        auction_val_y,
+        dataset_type="auction",
     )
+
+    get_specific_performance_graphs(dataset_type = "auction")
